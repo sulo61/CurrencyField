@@ -1,0 +1,10 @@
+/.gradle/
+/.idea/
+/app/build
+/app/app.iml
+/build/
+/currencyfield/build
+/currencyfield/currencyfield.iml
+/gradle
+/CurrencyFieldSample.iml
+/local.properties
