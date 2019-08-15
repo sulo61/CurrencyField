@@ -14,8 +14,8 @@ class CurrencyField @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.editTextStyle
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
-    private val factory: Factory =
-        Factory(Code.USD)
+    private val factory: Factory = Factory(Code.USD)
+    private val inputRegex = Regex("[0-9]")
     private val textWatcher = createTextWatcher()
     private val inputFilters = arrayOf(createInputFilter())
     private var ignoreTextChange = false
@@ -28,7 +28,7 @@ class CurrencyField @JvmOverloads constructor(
 
     private fun createInputFilter() =
         InputFilter { source, _, _, _, _, _ ->
-            if (ignoreTextChange || source.length <= Constants.MAX_CHARS_TO_INPUT) source
+            if (ignoreTextChange || inputRegex.matches(source)) source
             else Constants.EMPTY_STRING
         }
 
