@@ -17,6 +17,7 @@ import kotlin.math.min
 internal class Factory(code: Code) {
 
     companion object {
+        private const val PRINT_DEBUG_LOGS = false
         private const val TAG = "Factory"
     }
 
@@ -46,6 +47,7 @@ internal class Factory(code: Code) {
 
         // EMPTY
         if (cleanedText.isEmpty()) {
+            printStep("Empty string")
             nextText = EMPTY_STRING
             nextSelection = DEFAULT_SELECTION
             updateLastValues()
@@ -56,6 +58,7 @@ internal class Factory(code: Code) {
 
         // EMPTY
         if (currentValue == DEFAULT_VALUE) {
+            printStep("Empty value")
             nextText = EMPTY_STRING
             nextSelection = DEFAULT_SELECTION
             updateLastValues()
@@ -66,28 +69,27 @@ internal class Factory(code: Code) {
         nextSelection = min(currentSelection, nextText.length)
 
         // INCORRECT FORMAT
-        if (strategy.symbolPosition == SymbolPosition.START &&
-            lastText.startsWith(strategy.printSymbol) &&
-            !currentText.startsWith(strategy.printSymbol)
+        if (strategy.printSymbolRegex.containsMatchIn(lastText) && !strategy.printSymbolRegex.containsMatchIn(
+                currentText
+            )
         ) {
+            printStep("Incorrect format - missing symbol")
             nextText = lastText
-            nextSelection = strategy.symbolLength
-            lastSelection = nextSelection
-            return Result(nextText, nextSelection)
-        }
 
-        if (strategy.symbolPosition == SymbolPosition.END &&
-            lastText.endsWith(strategy.printSymbol) &&
-            !currentText.endsWith(strategy.printSymbol)
-        ) {
-            nextText = lastText
-            nextSelection = nextText.length - strategy.symbolLength
-            lastSelection = nextSelection
+            if (strategy.symbolPosition == SymbolPosition.START) {
+                nextSelection = strategy.symbolLength
+                lastSelection = nextSelection
+            } else {
+                nextSelection = nextText.length - strategy.symbolLength
+                lastSelection = nextSelection
+            }
+
             return Result(nextText, nextSelection)
         }
 
         // INCORRECT FORMAT
         if (lastText.contains(strategy.dividerChar) && !currentText.contains(strategy.dividerChar)) {
+            printStep("Incorrect format - missing divider")
             nextText = lastText
             nextSelection = currentSelection
             lastSelection = currentSelection
@@ -96,22 +98,37 @@ internal class Factory(code: Code) {
 
         // ADD CHAR
         if (currentText.length > lastText.length) {
+            printStep("Add char")
+            if (nextText == lastText) {
+                printStep("Add char - next and last are the same")
+                nextSelection = currentSelection - 1
+                lastSelection = nextSelection
+                return Result(nextText, nextSelection)
+            }
             currentSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, currentText, currentSelection)
             nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, nextSelection)
             nextSelection = nextSelection + nextSpecialCharsCounter - currentSpecialCharsCounter
+            printProperties(currentText, currentSelection)
             updateLastValues()
             return Result(nextText, nextSelection)
         }
 
         // REMOVE CHAR
         if (currentText.length < lastText.length) {
+            printStep("Remove char")
+            lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, lastText.length)
+            currentSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, currentText, currentText.length)
+
             // ON REMOVE THOUSAND DIVIDER, THEN REMOVE CHAR BEFORE DIVIDER
-            if (currentValue == lastValue) return parse(
-                nextText.removeRange(currentSelection - 1, currentSelection),
-                currentSelection - 1
-            )
+            if (currentValue == lastValue && currentSpecialCharsCounter != lastSpecialCharsCounter) {
+                printStep("Removed separator - calling parse again")
+                with(currentSelection - 1) {
+                    return parse(nextText.removeRange(this, currentSelection), this)
+                }
+            }
 
             // REMOVE ANOTHER CHAR - DIGIT
+            printStep("Removed digit")
             lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, currentSelection)
             nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, currentSelection - 1)
             nextSelection = currentSelection - lastSpecialCharsCounter + nextSpecialCharsCounter
@@ -119,9 +136,14 @@ internal class Factory(code: Code) {
             return Result(nextText, nextSelection)
         }
 
+        printStep("Unknown")
         updateLastValues()
         return Result(nextText, nextSelection)
     }
+
+    fun getLastText() = lastText
+
+    fun getLastValue() = lastValue
 
     private fun updateLastValues() {
         lastText = nextText
@@ -148,8 +170,9 @@ internal class Factory(code: Code) {
     private fun String.currencyTextToDouble() = replace(",", ".").toDouble()
 
 
-    // ONLY FOR FAST DEBUG
+    // ONLY FOR DEBUG
     private fun printProperties(currentText: String, currentSelection: Int) {
+        if (!PRINT_DEBUG_LOGS) return
         Log.d(TAG, "-------------------------- START")
         Log.d(TAG, "TEXT:")
         Log.d(TAG, "\t\tlastText: $lastText")
@@ -169,5 +192,10 @@ internal class Factory(code: Code) {
         Log.d(TAG, "\t\tnextSpecialCharsCounter: $nextSpecialCharsCounter")
         Log.d(TAG, "-------------------------- END")
         Log.d(TAG, " ")
+    }
+
+    private fun printStep(step: String) {
+        if (!PRINT_DEBUG_LOGS) return
+        Log.d(TAG, "STEP: $step")
     }
 }

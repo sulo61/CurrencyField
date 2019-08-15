@@ -1,6 +1,22 @@
+apply plugin: 'com.novoda.bintray-release'
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-android'
+
+publish {
+
+    def groupProjectID = 'io.sulek'
+    def artifactProjectID = 'currencyfield'
+    def publishVersionID = '1.0.2'
+
+    userOrg = 'sulo61'
+    repoName = 'Android'
+    groupId = groupProjectID
+    artifactId = artifactProjectID
+    publishVersion = publishVersionID
+    desc = 'AppCompatEditText with auto formatting currencies for Android'
+    website = 'https://github.com/sulo61/CurrencyField'
+}
 
 android {
     compileSdkVersion 28
@@ -9,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 28
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.0.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -25,8 +41,8 @@ android {
 }
 
 dependencies {
-    implementation "androidx.appcompat:appcompat:$appcompat_version"
-    implementation "androidx.core:core-ktx:$core_ktx_version"
+    implementation "androidx.appcompat:appcompat:1.0.2"
+    implementation "androidx.core:core-ktx:1.0.2"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
 repositories {

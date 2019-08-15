@@ -1,0 +1,8 @@
+<resources>
+    <declare-styleable name="CurrencyField">
+        <attr name="currency" format="enum">
+            <enum name="USD" value="0"/>
+            <enum name="EUR" value="1"/>
+        </attr>
+    </declare-styleable>
+</resources>

@@ -14,16 +14,34 @@ class CurrencyField @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.editTextStyle
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
-    private val factory: Factory = Factory(Code.USD)
     private val inputRegex = Regex("[0-9]")
     private val textWatcher = createTextWatcher()
     private val inputFilters = arrayOf(createInputFilter())
+
+    private var factory: Factory
+    private var currencyCode = Code.USD
     private var ignoreTextChange = false
 
     init {
+        getAttributes(attrs, context)
+        factory = Factory(currencyCode)
+
         addTextChangedListener(textWatcher)
         inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
         filters = inputFilters
+    }
+
+    fun getLastText() = factory.getLastText()
+
+    fun getLastValue() = factory.getLastValue()
+
+    private fun getAttributes(attrs: AttributeSet?, context: Context) {
+        attrs?.let {
+            with(context.obtainStyledAttributes(attrs, R.styleable.CurrencyField)) {
+                currencyCode = Code.getByValue(getInt(R.styleable.CurrencyField_currency, 0))
+                recycle()
+            }
+        }
     }
 
     private fun createInputFilter() =
