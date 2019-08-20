@@ -7,6 +7,7 @@ import androidx.appcompat.widget.AppCompatEditText
 import android.text.InputType
 import io.sulek.currencyfield.data.Code
 import io.sulek.currencyfield.factory.Factory
+import java.math.BigDecimal
 
 class CurrencyField @JvmOverloads constructor(
     context: Context,
@@ -22,6 +23,8 @@ class CurrencyField @JvmOverloads constructor(
     private var currencyCode = Code.USD
     private var ignoreTextChange = false
 
+    private var listener: Listener? = null
+
     init {
         getAttributes(attrs, context)
         factory = Factory(currencyCode)
@@ -31,9 +34,38 @@ class CurrencyField @JvmOverloads constructor(
         filters = inputFilters
     }
 
-    fun getLastText() = factory.getLastText()
+    fun getValue() = factory.getLastValue()
 
-    fun getLastValue() = factory.getLastValue()
+    fun setDoubleValue(value: Double?, notifyOnTextChange: Boolean = false) {
+        if (value != null) setTextValue(value.toString(), notifyOnTextChange)
+        else setEmptyValue(notifyOnTextChange)
+    }
+
+    fun setBigDecimalValue(value: BigDecimal?, notifyOnTextChange: Boolean = false) {
+        if (value != null) setTextValue(value.toString(), notifyOnTextChange)
+        else setEmptyValue(notifyOnTextChange)
+    }
+
+    fun setListener(listener: Listener) {
+        this.listener = listener
+    }
+
+    private fun setTextValue(textValue: String, notifyOnTextChange: Boolean) {
+        val textValueSelection = textValue.lastIndexOf('.')
+        val parseResult = factory.parse(textValue, textValueSelection, true)
+
+        this.ignoreTextChange = true
+        setText(parseResult.text)
+        setSelection(parseResult.position)
+        if (notifyOnTextChange) listener?.onChange(parseResult.text, factory.getLastValue())
+    }
+
+    private fun setEmptyValue(notifyOnTextChange: Boolean) {
+        this.ignoreTextChange = true
+        setText(Constants.EMPTY_STRING)
+        setSelection(Constants.DEFAULT_SELECTION)
+        if (notifyOnTextChange) listener?.onChange(Constants.EMPTY_STRING, Constants.DEFAULT_VALUE)
+    }
 
     private fun getAttributes(attrs: AttributeSet?, context: Context) {
         attrs?.let {
@@ -65,7 +97,12 @@ class CurrencyField @JvmOverloads constructor(
                 ignoreTextChange = true
                 setText(text)
                 setSelection(position)
+                listener?.onChange(text, factory.getLastValue())
             }
         }
+    }
+
+    interface Listener {
+        fun onChange(text: String, value: Double)
     }
 }

@@ -4,12 +4,16 @@ Current support:
 - USD
 - EUR
 
+Next version:
+- tests
+- full customization
+
 ## 0. Preview
 ![Imgur](https://i.imgur.com/zKtBOIi.gif)
 
 ## 1. Dependency
 ```
-implementation 'io.sulek:currencyfield:1.0.2'
+implementation 'io.sulek:currencyfield:1.0.3'
 ```
 ```
 repositories {

@@ -17,6 +17,7 @@
         android:textStyle="bold" />
 
     <io.sulek.currencyfield.CurrencyField
+        android:id="@+id/usdField"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"

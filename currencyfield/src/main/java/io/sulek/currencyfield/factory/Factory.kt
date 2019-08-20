@@ -42,7 +42,13 @@ internal class Factory(code: Code) {
     private var currentSpecialCharsCounter = DEFAULT_INT
     private var nextSpecialCharsCounter = DEFAULT_INT
 
-    fun parse(currentText: String, currentSelection: Int): Result {
+    fun parse(currentText: String, currentSelection: Int, cleanHistory: Boolean = false): Result {
+        if (cleanHistory) {
+            lastSelection = DEFAULT_SELECTION
+            lastText = EMPTY_STRING
+            lastValue = DEFAULT_VALUE
+        }
+
         cleanedText = currentText.replace(strategy.specialCharsRegex, EMPTY_STRING)
 
         // EMPTY
