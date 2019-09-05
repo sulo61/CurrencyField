@@ -6,5 +6,5 @@ internal object Constants {
     const val DEFAULT_INT = 0
     const val DEFAULT_SELECTION = 0
     const val MAX_FRACTION_DIGITS = 2
-    const val MAX_CHARS_TO_INPUT = 1
+    const val NO_FRACTION_DIGITS = 0
 }

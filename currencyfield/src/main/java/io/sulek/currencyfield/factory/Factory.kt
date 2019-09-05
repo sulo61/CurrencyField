@@ -6,6 +6,7 @@ import io.sulek.currencyfield.Constants.DEFAULT_INT
 import io.sulek.currencyfield.Constants.DEFAULT_SELECTION
 import io.sulek.currencyfield.Constants.EMPTY_STRING
 import io.sulek.currencyfield.Constants.MAX_FRACTION_DIGITS
+import io.sulek.currencyfield.Constants.NO_FRACTION_DIGITS
 import io.sulek.currencyfield.data.Code
 import io.sulek.currencyfield.data.Result
 import io.sulek.currencyfield.data.SymbolPosition
@@ -17,7 +18,7 @@ import kotlin.math.min
 internal class Factory(code: Code) {
 
     companion object {
-        private const val PRINT_DEBUG_LOGS = false
+        private const val PRINT_DEBUG_LOGS = true
         private const val TAG = "Factory"
     }
 
@@ -27,7 +28,7 @@ internal class Factory(code: Code) {
     }
     private val formatter = NumberFormat.getCurrencyInstance(strategy.locale).apply {
         currency = Currency.getInstance(strategy.code)
-        maximumFractionDigits = MAX_FRACTION_DIGITS
+        maximumFractionDigits = NO_FRACTION_DIGITS
         roundingMode = RoundingMode.DOWN
     }
 
@@ -41,6 +42,7 @@ internal class Factory(code: Code) {
     private var lastSpecialCharsCounter = DEFAULT_INT
     private var currentSpecialCharsCounter = DEFAULT_INT
     private var nextSpecialCharsCounter = DEFAULT_INT
+    private var currentFractionDigits = NO_FRACTION_DIGITS
 
     fun parse(currentText: String, currentSelection: Int, cleanHistory: Boolean = false): Result {
         if (cleanHistory) {
@@ -51,8 +53,8 @@ internal class Factory(code: Code) {
 
         cleanedText = currentText.replace(strategy.specialCharsRegex, EMPTY_STRING)
 
-        // EMPTY
-        if (cleanedText.isEmpty()) {
+        // EMPTY TEXT
+        if (cleanedText.isEmpty() || cleanedText == strategy.dividerChar.toString()) {
             printStep("Empty string")
             nextText = EMPTY_STRING
             nextSelection = DEFAULT_SELECTION
@@ -62,7 +64,7 @@ internal class Factory(code: Code) {
 
         currentValue = cleanedText.currencyTextToDouble()
 
-        // EMPTY
+        // EMPTY VALUE
         if (currentValue == DEFAULT_VALUE) {
             printStep("Empty value")
             nextText = EMPTY_STRING
@@ -71,10 +73,7 @@ internal class Factory(code: Code) {
             return Result(nextText, nextSelection)
         }
 
-        nextText = formatter.format(currentValue)
-        nextSelection = min(currentSelection, nextText.length)
-
-        // INCORRECT FORMAT
+        // INCORRECT FORMAT - MISSING SYMBOL
         if (strategy.printSymbolRegex.containsMatchIn(lastText) && !strategy.printSymbolRegex.containsMatchIn(
                 currentText
             )
@@ -93,58 +92,80 @@ internal class Factory(code: Code) {
             return Result(nextText, nextSelection)
         }
 
-        // INCORRECT FORMAT
-        if (lastText.contains(strategy.dividerChar) && !currentText.contains(strategy.dividerChar)) {
-            printStep("Incorrect format - missing divider")
+        // INCORRECT FORMAT - TOO MANY DIVIDER CHARS
+        if (currentText.count { it == strategy.dividerChar } > 1) {
+            printStep("Incorrect format - too many divider chars")
             nextText = lastText
-            nextSelection = currentSelection
-            lastSelection = currentSelection
+            nextSelection = lastSelection
+            updateLastValues()
             return Result(nextText, nextSelection)
         }
 
         // ADD CHAR
         if (currentText.length > lastText.length) {
             printStep("Add char")
+
+            if (!lastText.contains(strategy.dividerChar) && currentText.last() == strategy.dividerChar) {
+                printStep("Add char - divider at the end")
+                nextText = currentText
+                nextSelection = currentSelection
+                updateLastValues()
+                return Result(nextText, nextSelection)
+            }
+
+            setFractionDigitsForFormatter(currentText)
+
+            nextText = formatter.format(currentValue)
+            nextSelection = min(currentSelection, nextText.length)
+
             if (nextText == lastText) {
                 printStep("Add char - next and last are the same")
                 nextSelection = currentSelection - 1
                 lastSelection = nextSelection
                 return Result(nextText, nextSelection)
             }
+
             currentSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, currentText, currentSelection)
-            nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, nextSelection)
-            nextSelection = nextSelection + nextSpecialCharsCounter - currentSpecialCharsCounter
-            printProperties(currentText, currentSelection)
+            nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, currentSelection)
+            nextSelection = currentSelection - currentSpecialCharsCounter + nextSpecialCharsCounter
             updateLastValues()
             return Result(nextText, nextSelection)
         }
 
-        // REMOVE CHAR
         if (currentText.length < lastText.length) {
             printStep("Remove char")
+
+            if (currentText.last() == strategy.dividerChar) {
+                printStep("Remove char - divider at the end")
+                nextText = currentText
+                nextSelection = currentSelection
+                updateLastValues()
+                return Result(nextText, nextSelection)
+            }
+
+            setFractionDigitsForFormatter(currentText)
+
+            nextText = formatter.format(currentValue)
+            nextSelection = min(currentSelection, nextText.length)
+
             lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, lastText.length)
             currentSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, currentText, currentText.length)
 
-            // ON REMOVE THOUSAND DIVIDER, THEN REMOVE CHAR BEFORE DIVIDER
             if (currentValue == lastValue && currentSpecialCharsCounter != lastSpecialCharsCounter) {
-                printStep("Removed separator - calling parse again")
-                with(currentSelection - 1) {
-                    return parse(nextText.removeRange(this, currentSelection), this)
-                }
+                printStep("Remove char - thousand separator, remove one more")
+                currentValue = cleanedText.substring(0, cleanedText.length - 1).currencyTextToDouble()
+                nextText = formatter.format(currentValue)
+                nextSelection = min(currentSelection, nextText.length)
             }
 
-            // REMOVE ANOTHER CHAR - DIGIT
-            printStep("Removed digit")
-            lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, currentSelection)
-            nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, currentSelection - 1)
+            lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, lastSelection)
+            nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, min(nextText.length, lastSelection - 1))
             nextSelection = currentSelection - lastSpecialCharsCounter + nextSpecialCharsCounter
             updateLastValues()
             return Result(nextText, nextSelection)
         }
 
-        printStep("Unknown")
-        updateLastValues()
-        return Result(nextText, nextSelection)
+        return Result(currentText, currentSelection)
     }
 
     fun getLastText() = lastText
@@ -175,6 +196,15 @@ internal class Factory(code: Code) {
 
     private fun String.currencyTextToDouble() = replace(",", ".").toDouble()
 
+    private fun setFractionDigitsForFormatter(currentText: String) {
+        currentFractionDigits = if (currentText.contains(strategy.dividerChar)) {
+            currentText.length - currentText.indexOf(strategy.dividerChar) - 1
+        } else {
+            NO_FRACTION_DIGITS
+        }
+        formatter.maximumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
+        formatter.minimumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
+    }
 
     // ONLY FOR DEBUG
     private fun printProperties(currentText: String, currentSelection: Int) {

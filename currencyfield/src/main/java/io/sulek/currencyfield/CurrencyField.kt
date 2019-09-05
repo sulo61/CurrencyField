@@ -15,7 +15,7 @@ class CurrencyField @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.editTextStyle
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
-    private val inputRegex = Regex("[0-9]")
+    private val inputRegex = Regex("[0-9\\.]")
     private val textWatcher = createTextWatcher()
     private val inputFilters = arrayOf(createInputFilter())
 
@@ -51,8 +51,8 @@ class CurrencyField @JvmOverloads constructor(
     }
 
     private fun setTextValue(textValue: String, notifyOnTextChange: Boolean) {
-        val textValueSelection = textValue.lastIndexOf('.')
-        val parseResult = factory.parse(textValue, textValueSelection, true)
+        val cleanedTextValue = textValue.replace(".00", "").replace(".0", "")
+        val parseResult = factory.parse(cleanedTextValue, cleanedTextValue.length, true)
 
         this.ignoreTextChange = true
         setText(parseResult.text)
