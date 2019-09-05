@@ -1,4 +1,4 @@
-package io.sulek.currencyfield.factory
+package io.sulek.currencyfield
 
 import android.util.Log
 import io.sulek.currencyfield.Constants.DEFAULT_VALUE
@@ -7,29 +7,44 @@ import io.sulek.currencyfield.Constants.DEFAULT_SELECTION
 import io.sulek.currencyfield.Constants.EMPTY_STRING
 import io.sulek.currencyfield.Constants.MAX_FRACTION_DIGITS
 import io.sulek.currencyfield.Constants.NO_FRACTION_DIGITS
-import io.sulek.currencyfield.data.Code
-import io.sulek.currencyfield.data.Result
+import io.sulek.currencyfield.data.Charset
 import io.sulek.currencyfield.data.SymbolPosition
+import io.sulek.currencyfield.data.Result
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.*
 import kotlin.math.min
 
-internal class Factory(code: Code) {
+internal class CurrencyFactory(
+    private val currencySymbol: String,
+    private val currencyCode: String,
+    private val symbolPosition: SymbolPosition,
+    private val charset: Charset
+) {
 
     companion object {
         private const val PRINT_DEBUG_LOGS = true
-        private const val TAG = "Factory"
+        private const val TAG = "CurrencyFactory"
     }
 
-    private val strategy: CurrencyStrategy = when (code) {
-        Code.USD -> USDCurrencyStrategy
-        Code.EUR -> EURCurrencyStrategy
-    }
-    private val formatter = NumberFormat.getCurrencyInstance(strategy.locale).apply {
-        currency = Currency.getInstance(strategy.code)
+    private val formatter = NumberFormat.getCurrencyInstance(getLocale()).apply {
+        currency = Currency.getInstance(currencyCode)
         maximumFractionDigits = NO_FRACTION_DIGITS
         roundingMode = RoundingMode.DOWN
+    }
+    private val thousandDividerRegex = Regex(
+        when (charset) {
+            Charset.COMA_AND_DOT -> "[,]"
+            Charset.SPACE_AND_COMA -> "[\\s]"
+        }
+    )
+    private val decimalDivider = when (charset) {
+        Charset.COMA_AND_DOT -> '.'
+        Charset.SPACE_AND_COMA -> ','
+    }
+    private val currencySymbolInText = when (symbolPosition) {
+        SymbolPosition.BEGIN -> currencySymbol
+        SymbolPosition.END -> " $currencySymbol"
     }
 
     private var lastText = EMPTY_STRING
@@ -51,10 +66,10 @@ internal class Factory(code: Code) {
             lastValue = DEFAULT_VALUE
         }
 
-        cleanedText = currentText.replace(strategy.specialCharsRegex, EMPTY_STRING)
+        cleanedText = cleanTextFromExtraChars(currentText)
 
         // EMPTY TEXT
-        if (cleanedText.isEmpty() || cleanedText == strategy.dividerChar.toString()) {
+        if (cleanedText.isEmpty() || cleanedText == decimalDivider.toString()) {
             printStep("Empty string")
             nextText = EMPTY_STRING
             nextSelection = DEFAULT_SELECTION
@@ -74,18 +89,15 @@ internal class Factory(code: Code) {
         }
 
         // INCORRECT FORMAT - MISSING SYMBOL
-        if (strategy.printSymbolRegex.containsMatchIn(lastText) && !strategy.printSymbolRegex.containsMatchIn(
-                currentText
-            )
-        ) {
+        if (lastText.contains(currencySymbolInText) && !currentText.contains(currencySymbolInText)) {
             printStep("Incorrect format - missing symbol")
             nextText = lastText
 
-            if (strategy.symbolPosition == SymbolPosition.START) {
-                nextSelection = strategy.symbolLength
+            if (symbolPosition == SymbolPosition.BEGIN) {
+                nextSelection = currencySymbolInText.length
                 lastSelection = nextSelection
             } else {
-                nextSelection = nextText.length - strategy.symbolLength
+                nextSelection = nextText.length - currencySymbolInText.length
                 lastSelection = nextSelection
             }
 
@@ -93,7 +105,7 @@ internal class Factory(code: Code) {
         }
 
         // INCORRECT FORMAT - TOO MANY DIVIDER CHARS
-        if (currentText.count { it == strategy.dividerChar } > 1) {
+        if (currentText.count { it == decimalDivider } > 1) {
             printStep("Incorrect format - too many divider chars")
             nextText = lastText
             nextSelection = lastSelection
@@ -105,7 +117,7 @@ internal class Factory(code: Code) {
         if (currentText.length > lastText.length) {
             printStep("Add char")
 
-            if (!lastText.contains(strategy.dividerChar) && currentText.last() == strategy.dividerChar) {
+            if (!lastText.contains(decimalDivider) && cleanedText.last() == decimalDivider) {
                 printStep("Add char - divider at the end")
                 nextText = currentText
                 nextSelection = currentSelection
@@ -125,8 +137,8 @@ internal class Factory(code: Code) {
                 return Result(nextText, nextSelection)
             }
 
-            currentSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, currentText, currentSelection)
-            nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, currentSelection)
+            currentSpecialCharsCounter = countSpecialChars(symbolPosition, currentText, currentSelection)
+            nextSpecialCharsCounter = countSpecialChars(symbolPosition, nextText, currentSelection)
             nextSelection = currentSelection - currentSpecialCharsCounter + nextSpecialCharsCounter
             updateLastValues()
             return Result(nextText, nextSelection)
@@ -135,7 +147,7 @@ internal class Factory(code: Code) {
         if (currentText.length < lastText.length) {
             printStep("Remove char")
 
-            if (currentText.last() == strategy.dividerChar) {
+            if (currentText.last() == decimalDivider) {
                 printStep("Remove char - divider at the end")
                 nextText = currentText
                 nextSelection = currentSelection
@@ -148,8 +160,8 @@ internal class Factory(code: Code) {
             nextText = formatter.format(currentValue)
             nextSelection = min(currentSelection, nextText.length)
 
-            lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, lastText.length)
-            currentSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, currentText, currentText.length)
+            lastSpecialCharsCounter = countSpecialChars(symbolPosition, lastText, lastText.length)
+            currentSpecialCharsCounter = countSpecialChars(symbolPosition, currentText, currentText.length)
 
             if (currentValue == lastValue && currentSpecialCharsCounter != lastSpecialCharsCounter) {
                 printStep("Remove char - thousand separator, remove one more")
@@ -158,14 +170,22 @@ internal class Factory(code: Code) {
                 nextSelection = min(currentSelection, nextText.length)
             }
 
-            lastSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, lastText, lastSelection)
-            nextSpecialCharsCounter = countSpecialChars(strategy.symbolPosition, nextText, min(nextText.length, lastSelection - 1))
+            lastSpecialCharsCounter = countSpecialChars(symbolPosition, lastText, lastSelection)
+            nextSpecialCharsCounter =
+                countSpecialChars(symbolPosition, nextText, min(nextText.length, lastSelection - 1))
             nextSelection = currentSelection - lastSpecialCharsCounter + nextSpecialCharsCounter
             updateLastValues()
             return Result(nextText, nextSelection)
         }
 
         return Result(currentText, currentSelection)
+    }
+
+    private fun cleanTextFromExtraChars(currentText: String): String {
+        return currentText
+            .replace(thousandDividerRegex, EMPTY_STRING)
+            .replace(currencySymbolInText, EMPTY_STRING)
+            .replace(currencySymbol, EMPTY_STRING)
     }
 
     fun getLastText() = lastText
@@ -175,21 +195,15 @@ internal class Factory(code: Code) {
     private fun updateLastValues() {
         lastText = nextText
         lastSelection = nextSelection
-        lastValue =
-            if (nextText.isEmpty()) DEFAULT_VALUE
-            else nextText.replace(strategy.specialCharsRegex, EMPTY_STRING).currencyTextToDouble()
+        lastValue = if (nextText.isEmpty()) DEFAULT_VALUE else cleanTextFromExtraChars(nextText).currencyTextToDouble()
     }
 
     private fun countSpecialChars(symbolPosition: SymbolPosition, input: String, limit: Int): Int {
         var counter = 0
 
-        if (symbolPosition == SymbolPosition.START && input.contains(strategy.symbol)) {
-            counter += strategy.symbolLength
-        }
+        if (symbolPosition == SymbolPosition.BEGIN && input.contains(currencySymbol)) counter += currencySymbolInText.length
 
-        for (i in 0 until limit) {
-            if (strategy.thousandRegex.matches(input[i].toString())) counter++
-        }
+        for (i in 0 until limit) if (thousandDividerRegex.matches(input[i].toString())) counter++
 
         return counter
     }
@@ -197,13 +211,17 @@ internal class Factory(code: Code) {
     private fun String.currencyTextToDouble() = replace(",", ".").toDouble()
 
     private fun setFractionDigitsForFormatter(currentText: String) {
-        currentFractionDigits = if (currentText.contains(strategy.dividerChar)) {
-            currentText.length - currentText.indexOf(strategy.dividerChar) - 1
-        } else {
-            NO_FRACTION_DIGITS
-        }
+        currentFractionDigits =
+            if (currentText.contains(decimalDivider)) {
+                currentText.length - currentText.indexOf(decimalDivider) - 1 - if (symbolPosition == SymbolPosition.END) currencySymbolInText.length else 0
+            } else NO_FRACTION_DIGITS
         formatter.maximumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
         formatter.minimumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
+    }
+
+    private fun getLocale() = when (charset) {
+        Charset.COMA_AND_DOT -> Locale.US
+        Charset.SPACE_AND_COMA -> Locale.CANADA_FRENCH
     }
 
     // ONLY FOR DEBUG
