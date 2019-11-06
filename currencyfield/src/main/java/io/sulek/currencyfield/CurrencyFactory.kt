@@ -67,6 +67,7 @@ internal class CurrencyFactory(
     private var currentSpecialCharsCounter = DEFAULT_INT
     private var nextSpecialCharsCounter = DEFAULT_INT
     private var currentFractionDigits = NO_FRACTION_DIGITS
+    private var addedFractionDigits = DEFAULT_INT
 
     fun parse(
         currentText: String,
@@ -80,7 +81,7 @@ internal class CurrencyFactory(
             lastValue = DEFAULT_VALUE
         }
 
-        cleanedText = currentText.cleanTextFromExtraChars().removeAdditionalFractionDigits()
+        cleanedText = currentText.cleanTextFromExtraChars()//.removeAdditionalFractionDigits()
 
 
         // EMPTY TEXT
@@ -163,8 +164,12 @@ internal class CurrencyFactory(
             currentSpecialCharsCounter = countSpecialChars(symbolPosition, currentText, currentSelection)
             nextSpecialCharsCounter =
                 countSpecialChars(symbolPosition, nextText, min(nextText.length, currentSelection))
+            addedFractionDigits = currentText.countAddedFractionDigits()
             nextSelection =
-                min(nextText.length, currentSelection - currentSpecialCharsCounter + nextSpecialCharsCounter)
+                min(
+                    nextText.length,
+                    currentSelection - currentSpecialCharsCounter + nextSpecialCharsCounter + addedFractionDigits
+                )
             updateLastValues()
             return Result(nextText, nextSelection)
         }
@@ -229,6 +234,15 @@ internal class CurrencyFactory(
         return this
     }
 
+    private fun String.countAddedFractionDigits(): Int {
+        if (contains(".")) {
+            val position = indexOf(".") + 1
+            val currentFractionDigits = length - position
+            return formatter.maximumFractionDigits - currentFractionDigits
+        }
+        return formatter.maximumFractionDigits
+    }
+
     private fun updateLastValues() {
         lastText = nextText
         lastSelection = nextSelection
@@ -252,8 +266,8 @@ internal class CurrencyFactory(
     private fun setFractionDigitsForFormatter(currentText: String, forceFractionDigits: Boolean = false) {
         currentFractionDigits =
             when {
-                emptyFractionRegex.containsMatchIn(currentText) -> NO_FRACTION_DIGITS
                 forceFractionDigits -> MAX_FRACTION_DIGITS
+//                emptyFractionRegex.containsMatchIn(currentText) -> NO_FRACTION_DIGITS
                 currentText.contains(decimalDivider) -> currentText.length - currentText.indexOf(decimalDivider) - 1 -
                         if (symbolPosition == SymbolPosition.END) currencySymbolInText.length else 0
                 else -> NO_FRACTION_DIGITS
