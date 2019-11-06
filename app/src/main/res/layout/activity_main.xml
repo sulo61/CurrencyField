@@ -59,7 +59,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
-            android:text="USD:"
+            android:text="EUR:"
             android:textSize="20dp"
             android:textStyle="bold" />
 
@@ -68,6 +68,6 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:padding="16dp"
-            app:attrCurrencyCode="USD" />
+            app:attrCurrencyCode="EUR" />
 
 </LinearLayout>

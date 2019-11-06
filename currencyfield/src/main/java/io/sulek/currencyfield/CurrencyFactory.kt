@@ -183,6 +183,13 @@ internal class CurrencyFactory(
 
             if (currentValue == lastValue && currentSpecialCharsCounter != lastSpecialCharsCounter) {
                 printStep("Remove char - thousand separator, remove one more")
+                if (cleanedText.length <= 1) {
+                    printStep("Remove char - thousand separator, there is no more characters, return empty")
+                    nextText = EMPTY_STRING
+                    nextSelection = DEFAULT_SELECTION
+                    updateLastValues()
+                    return Result(nextText, nextSelection)
+                }
                 currentValue = cleanedText.substring(0, cleanedText.length - 1).currencyTextToDouble()
                 nextText = formatter.format(currentValue)
                 nextSelection = min(currentSelection, nextText.length)
