@@ -41,13 +41,17 @@ class CurrencyField @JvmOverloads constructor(
 
     fun getValue() = currencyFactory.getLastValue()
 
-    fun setDoubleValue(value: Double?, notifyOnTextChange: Boolean = false) {
-        if (value != null) setTextValue(value.toString(), notifyOnTextChange)
+    fun setDoubleValue(value: Double?, notifyOnTextChange: Boolean = false, forceFractionDigits: Boolean = false) {
+        if (value != null) setTextValue(value.toString(), notifyOnTextChange, forceFractionDigits)
         else setEmptyValue(notifyOnTextChange)
     }
 
-    fun setBigDecimalValue(value: BigDecimal?, notifyOnTextChange: Boolean = false) {
-        if (value != null) setTextValue(value.toString(), notifyOnTextChange)
+    fun setBigDecimalValue(
+        value: BigDecimal?,
+        notifyOnTextChange: Boolean = false,
+        forceFractionDigits: Boolean = false
+    ) {
+        if (value != null) setTextValue(value.toString(), notifyOnTextChange, forceFractionDigits)
         else setEmptyValue(notifyOnTextChange)
     }
 
@@ -55,9 +59,8 @@ class CurrencyField @JvmOverloads constructor(
         this.listener = listener
     }
 
-    private fun setTextValue(textValue: String, notifyOnTextChange: Boolean) {
-        val cleanedTextValue = textValue.replace(".00", "").replace(".0", "")
-        val parseResult = currencyFactory.parse(cleanedTextValue, cleanedTextValue.length, true)
+    private fun setTextValue(textValue: String, notifyOnTextChange: Boolean, forceFractionDigits: Boolean) {
+        val parseResult = currencyFactory.parse(textValue, textValue.length, true, forceFractionDigits)
 
         this.ignoreTextChange = true
         setText(parseResult.text)

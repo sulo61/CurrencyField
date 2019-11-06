@@ -10,9 +10,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-//        twoDollarsBtn.setOnClickListener { usdField.setDoubleValue(2.0) }
-//        fiveDollarsBtn.setOnClickListener { usdField.setDoubleValue(5.0) }
-//        tenDollarsBtn.setOnClickListener { usdField.setDoubleValue(10.0) }
+        twoDollarsBtn.setOnClickListener { usdField.setDoubleValue(2.1, forceFractionDigits = true) }
+        fiveDollarsBtn.setOnClickListener { usdField.setDoubleValue(5.0) }
+        tenDollarsBtn.setOnClickListener { usdField.setDoubleValue(10.0) }
     }
 
 }
