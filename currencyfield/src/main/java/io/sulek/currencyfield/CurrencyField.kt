@@ -6,7 +6,7 @@ import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatEditText
 import android.text.method.DigitsKeyListener
 import io.sulek.currencyfield.data.Charset
-import io.sulek.currencyfield.data.CurrencyDetails
+import io.sulek.currencyfield.data.Details
 import java.math.BigDecimal
 
 class CurrencyField @JvmOverloads constructor(
@@ -16,7 +16,7 @@ class CurrencyField @JvmOverloads constructor(
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
     private var currencyCode: String = Constants.EMPTY_STRING
-    private val currencyDetails: CurrencyDetails
+    private val details: Details
     private var currencyFactory: CurrencyFactory
     private var ignoreTextChange = false
     private var listener: Listener? = null
@@ -27,12 +27,12 @@ class CurrencyField @JvmOverloads constructor(
 
     init {
         getAttributes(attrs, context)
-        currencyDetails = CurrencyDetailsFactory.getDetails(currencyCode)
+        details = CurrencyDetailsFactory.getDetails(currencyCode)
         inputRegex = createInputRegex()
         inputFilters = arrayOf(createInputFilter())
         textWatcher = createTextWatcher()
 
-        currencyFactory = CurrencyFactory(currencyCode, currencyDetails)
+        currencyFactory = CurrencyFactory(currencyCode, details)
 
         addTextChangedListener(textWatcher)
         keyListener = DigitsKeyListener.getInstance("0123456789.,")
@@ -112,7 +112,7 @@ class CurrencyField @JvmOverloads constructor(
     }
 
     private fun createInputRegex() = Regex(
-        when (currencyDetails.charset) {
+        when (details.charset) {
             Charset.COMA_AND_DOT -> "[0-9\\.]"
             Charset.SPACE_AND_COMA -> "[0-9\\,]"
         }

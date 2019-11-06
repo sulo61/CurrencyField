@@ -8,7 +8,7 @@ import io.sulek.currencyfield.Constants.EMPTY_STRING
 import io.sulek.currencyfield.Constants.MAX_FRACTION_DIGITS
 import io.sulek.currencyfield.Constants.NO_FRACTION_DIGITS
 import io.sulek.currencyfield.data.Charset
-import io.sulek.currencyfield.data.CurrencyDetails
+import io.sulek.currencyfield.data.Details
 import io.sulek.currencyfield.data.SymbolPosition
 import io.sulek.currencyfield.data.Result
 import java.math.RoundingMode
@@ -18,7 +18,7 @@ import kotlin.math.min
 
 internal class CurrencyFactory(
     private val currencyCode: String,
-    private val currencyDetails: CurrencyDetails
+    private val details: Details
 ) {
 
     companion object {
@@ -33,26 +33,26 @@ internal class CurrencyFactory(
     }
 
     private val symbolPosition
-        get() = currencyDetails.symbolPosition
+        get() = details.symbolPosition
     private val currencySymbol
-        get() = currencyDetails.currencySymbol
+        get() = details.currencySymbol
     private val charset
-        get() = currencyDetails.charset
+        get() = details.charset
 
 
     private val thousandDividerRegex = Regex(
-        when (currencyDetails.charset) {
+        when (details.charset) {
             Charset.COMA_AND_DOT -> "[,]"
             Charset.SPACE_AND_COMA -> "[\\s]"
         }
     )
-    private val decimalDivider = when (currencyDetails.charset) {
+    private val decimalDivider = when (details.charset) {
         Charset.COMA_AND_DOT -> '.'
         Charset.SPACE_AND_COMA -> ','
     }
     private val currencySymbolInText = when (symbolPosition) {
-        SymbolPosition.BEGIN -> currencyDetails.currencySymbol
-        SymbolPosition.END -> " ${currencyDetails.currencySymbol}"
+        SymbolPosition.BEGIN -> details.currencySymbol
+        SymbolPosition.END -> " ${details.currencySymbol}"
     }
 
 
