@@ -4,10 +4,9 @@ import android.content.Context
 import android.text.*
 import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatEditText
-import android.text.InputType
 import android.text.method.DigitsKeyListener
 import io.sulek.currencyfield.data.Charset
-import io.sulek.currencyfield.data.SymbolPosition
+import io.sulek.currencyfield.data.CurrencyDetails
 import java.math.BigDecimal
 
 class CurrencyField @JvmOverloads constructor(
@@ -16,25 +15,24 @@ class CurrencyField @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.editTextStyle
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
-    private var currencySymbol: String = Constants.EMPTY_STRING
     private var currencyCode: String = Constants.EMPTY_STRING
-    private var symbolPosition: SymbolPosition = SymbolPosition.BEGIN
-    private var charset: Charset = Charset.COMA_AND_DOT
+    private val currencyDetails: CurrencyDetails
     private var currencyFactory: CurrencyFactory
     private var ignoreTextChange = false
     private var listener: Listener? = null
     private val inputRegex: Regex
     private val textWatcher: TextWatcher
+
     private val inputFilters: Array<InputFilter>
 
     init {
         getAttributes(attrs, context)
-
+        currencyDetails = CurrencyDetailsFactory.getDetails(currencyCode)
         inputRegex = createInputRegex()
         inputFilters = arrayOf(createInputFilter())
         textWatcher = createTextWatcher()
 
-        currencyFactory = CurrencyFactory(currencySymbol, currencyCode, symbolPosition, charset)
+        currencyFactory = CurrencyFactory(currencyCode, currencyDetails)
 
         addTextChangedListener(textWatcher)
         keyListener = DigitsKeyListener.getInstance("0123456789.,")
@@ -77,21 +75,9 @@ class CurrencyField @JvmOverloads constructor(
     private fun getAttributes(attrs: AttributeSet?, context: Context) {
         attrs?.let {
             with(context.obtainStyledAttributes(attrs, R.styleable.CurrencyField)) {
-                with(R.styleable.CurrencyField_attrCurrencySymbol) {
-                    if (hasValue(this)) currencySymbol = getString(this) ?: Constants.EMPTY_STRING
-                    else throw Exception("attrCurrencySymbol is required")
-                }
                 with(R.styleable.CurrencyField_attrCurrencyCode) {
                     if (hasValue(this)) currencyCode = getString(this) ?: Constants.EMPTY_STRING
                     else throw Exception("attrCurrencyCode is required")
-                }
-                with(R.styleable.CurrencyField_attrSymbolPosition) {
-                    if (hasValue(this)) symbolPosition = SymbolPosition.getById(getInt(this, 0))
-                    else throw Exception("attrSymbolPosition is required")
-                }
-                with(R.styleable.CurrencyField_attrCharset) {
-                    if (hasValue(this)) charset = Charset.getById(getInt(this, 0))
-                    else throw Exception("attrCharset is required")
                 }
 
                 recycle()
@@ -126,7 +112,7 @@ class CurrencyField @JvmOverloads constructor(
     }
 
     private fun createInputRegex() = Regex(
-        when (charset) {
+        when (currencyDetails.charset) {
             Charset.COMA_AND_DOT -> "[0-9\\.]"
             Charset.SPACE_AND_COMA -> "[0-9\\,]"
         }

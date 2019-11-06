@@ -16,16 +16,16 @@
             android:textSize="20dp"
             android:textStyle="bold" />
 
-<!--    <io.sulek.currencyfield.CurrencyField-->
-<!--            android:id="@+id/usdField"-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:layout_gravity="center"-->
-<!--            android:padding="16dp"-->
-<!--            app:attrCharset="comaAndDot"-->
-<!--            app:attrCurrencyCode="USD"-->
-<!--            app:attrSymbolPosition="begin"-->
-<!--            app:attrCurrencySymbol="$" />-->
+    <!--    <io.sulek.currencyfield.CurrencyField-->
+    <!--            android:id="@+id/usdField"-->
+    <!--            android:layout_width="match_parent"-->
+    <!--            android:layout_height="wrap_content"-->
+    <!--            android:layout_gravity="center"-->
+    <!--            android:padding="16dp"-->
+    <!--            app:attrCharset="comaAndDot"-->
+    <!--            app:attrCurrencyCode="USD"-->
+    <!--            app:attrSymbolPosition="begin"-->
+    <!--            app:attrCurrencySymbol="$" />-->
 
     <LinearLayout
             android:layout_width="match_parent"
@@ -59,7 +59,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
-            android:text="EUR:"
+            android:text="USD:"
             android:textSize="20dp"
             android:textStyle="bold" />
 
@@ -68,9 +68,6 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:padding="16dp"
-            app:attrCharset="spaceAndComa"
-            app:attrCurrencyCode="EUR"
-            app:attrSymbolPosition="end"
-            app:attrCurrencySymbol="€" />
+            app:attrCurrencyCode="USD" />
 
 </LinearLayout>

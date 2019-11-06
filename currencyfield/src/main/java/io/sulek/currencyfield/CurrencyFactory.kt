@@ -8,6 +8,7 @@ import io.sulek.currencyfield.Constants.EMPTY_STRING
 import io.sulek.currencyfield.Constants.MAX_FRACTION_DIGITS
 import io.sulek.currencyfield.Constants.NO_FRACTION_DIGITS
 import io.sulek.currencyfield.data.Charset
+import io.sulek.currencyfield.data.CurrencyDetails
 import io.sulek.currencyfield.data.SymbolPosition
 import io.sulek.currencyfield.data.Result
 import java.math.RoundingMode
@@ -16,10 +17,8 @@ import java.util.*
 import kotlin.math.min
 
 internal class CurrencyFactory(
-    private val currencySymbol: String,
     private val currencyCode: String,
-    private val symbolPosition: SymbolPosition,
-    private val charset: Charset
+    private val currencyDetails: CurrencyDetails
 ) {
 
     companion object {
@@ -32,20 +31,30 @@ internal class CurrencyFactory(
         maximumFractionDigits = NO_FRACTION_DIGITS
         roundingMode = RoundingMode.DOWN
     }
+
+    private val symbolPosition
+        get() = currencyDetails.symbolPosition
+    private val currencySymbol
+        get() = currencyDetails.currencySymbol
+    private val charset
+        get() = currencyDetails.charset
+
+
     private val thousandDividerRegex = Regex(
-        when (charset) {
+        when (currencyDetails.charset) {
             Charset.COMA_AND_DOT -> "[,]"
             Charset.SPACE_AND_COMA -> "[\\s]"
         }
     )
-    private val decimalDivider = when (charset) {
+    private val decimalDivider = when (currencyDetails.charset) {
         Charset.COMA_AND_DOT -> '.'
         Charset.SPACE_AND_COMA -> ','
     }
     private val currencySymbolInText = when (symbolPosition) {
-        SymbolPosition.BEGIN -> currencySymbol
-        SymbolPosition.END -> " $currencySymbol"
+        SymbolPosition.BEGIN -> currencyDetails.currencySymbol
+        SymbolPosition.END -> " ${currencyDetails.currencySymbol}"
     }
+
 
     private var lastText = EMPTY_STRING
     private var cleanedText = EMPTY_STRING
@@ -68,11 +77,20 @@ internal class CurrencyFactory(
 
         cleanedText = cleanTextFromExtraChars(currentText)
 
+
         // EMPTY TEXT
         if (cleanedText.isEmpty() || cleanedText == decimalDivider.toString()) {
             printStep("Empty string")
             nextText = EMPTY_STRING
             nextSelection = DEFAULT_SELECTION
+            updateLastValues()
+            return Result(nextText, nextSelection)
+        }
+
+        if (cleanedText.length > 15) {
+            printStep("Too long string")
+            nextText = lastText
+            nextSelection = lastSelection
             updateLastValues()
             return Result(nextText, nextSelection)
         }

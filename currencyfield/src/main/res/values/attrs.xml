@@ -1,14 +1,5 @@
 <resources>
     <declare-styleable name="CurrencyField">
-        <attr name="attrCurrencySymbol" format="string" />
         <attr name="attrCurrencyCode" format="string" />
-        <attr name="attrSymbolPosition" format="enum">
-            <enum name="begin" value="0" />
-            <enum name="end" value="1" />
-        </attr>
-        <attr name="attrCharset" format="enum">
-            <enum name="comaAndDot" value="0" />
-            <enum name="spaceAndComa" value="1" />
-        </attr>
     </declare-styleable>
 </resources>
