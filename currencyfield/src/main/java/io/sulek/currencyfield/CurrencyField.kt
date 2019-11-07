@@ -4,10 +4,9 @@ import android.content.Context
 import android.text.*
 import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatEditText
-import android.text.InputType
 import android.text.method.DigitsKeyListener
 import io.sulek.currencyfield.data.Charset
-import io.sulek.currencyfield.data.SymbolPosition
+import io.sulek.currencyfield.data.Details
 import java.math.BigDecimal
 
 class CurrencyField @JvmOverloads constructor(
@@ -16,25 +15,24 @@ class CurrencyField @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.editTextStyle
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
-    private var currencySymbol: String = Constants.EMPTY_STRING
-    private var currencyCode: String = Constants.EMPTY_STRING
-    private var symbolPosition: SymbolPosition = SymbolPosition.BEGIN
-    private var charset: Charset = Charset.COMA_AND_DOT
+    private var currencyCodeValue: Int = 0
+    private val details: Details
     private var currencyFactory: CurrencyFactory
     private var ignoreTextChange = false
     private var listener: Listener? = null
     private val inputRegex: Regex
     private val textWatcher: TextWatcher
+
     private val inputFilters: Array<InputFilter>
 
     init {
         getAttributes(attrs, context)
-
+        details = CurrencyDetailsFactory.getDetails(currencyCodeValue)
         inputRegex = createInputRegex()
         inputFilters = arrayOf(createInputFilter())
         textWatcher = createTextWatcher()
 
-        currencyFactory = CurrencyFactory(currencySymbol, currencyCode, symbolPosition, charset)
+        currencyFactory = CurrencyFactory(details)
 
         addTextChangedListener(textWatcher)
         keyListener = DigitsKeyListener.getInstance("0123456789.,")
@@ -43,28 +41,25 @@ class CurrencyField @JvmOverloads constructor(
 
     fun getValue() = currencyFactory.getLastValue()
 
-    fun setDoubleValue(value: Double?, notifyOnTextChange: Boolean = false) {
-        if (value != null) setTextValue(value.toString(), notifyOnTextChange)
-        else setEmptyValue(notifyOnTextChange)
+
+    fun setBigDecimalValue(value: BigDecimal?, notifyListener: Boolean = false, forceFractionDigits: Boolean = false) {
+        value?.let { setDoubleValue(it.toDouble(), notifyListener, forceFractionDigits) }
+            ?: run { setEmptyValue(notifyListener) }
     }
 
-    fun setBigDecimalValue(value: BigDecimal?, notifyOnTextChange: Boolean = false) {
-        if (value != null) setTextValue(value.toString(), notifyOnTextChange)
-        else setEmptyValue(notifyOnTextChange)
+    fun setDoubleValue(value: Double?, notifyListener: Boolean = false, forceFractionDigits: Boolean = false) {
+        value?.let {
+            val parseResult = currencyFactory.parseNumberInput(value, forceFractionDigits)
+
+            this.ignoreTextChange = true
+            setText(parseResult.text)
+            setSelection(parseResult.position)
+            if (notifyListener) listener?.onChange(parseResult.text, currencyFactory.getLastValue())
+        } ?: run { setEmptyValue(notifyListener) }
     }
 
     fun setListener(listener: Listener) {
         this.listener = listener
-    }
-
-    private fun setTextValue(textValue: String, notifyOnTextChange: Boolean) {
-        val cleanedTextValue = textValue.replace(".00", "").replace(".0", "")
-        val parseResult = currencyFactory.parse(cleanedTextValue, cleanedTextValue.length, true)
-
-        this.ignoreTextChange = true
-        setText(parseResult.text)
-        setSelection(parseResult.position)
-        if (notifyOnTextChange) listener?.onChange(parseResult.text, currencyFactory.getLastValue())
     }
 
     private fun setEmptyValue(notifyOnTextChange: Boolean) {
@@ -77,21 +72,9 @@ class CurrencyField @JvmOverloads constructor(
     private fun getAttributes(attrs: AttributeSet?, context: Context) {
         attrs?.let {
             with(context.obtainStyledAttributes(attrs, R.styleable.CurrencyField)) {
-                with(R.styleable.CurrencyField_attrCurrencySymbol) {
-                    if (hasValue(this)) currencySymbol = getString(this) ?: Constants.EMPTY_STRING
-                    else throw Exception("attrCurrencySymbol is required")
-                }
                 with(R.styleable.CurrencyField_attrCurrencyCode) {
-                    if (hasValue(this)) currencyCode = getString(this) ?: Constants.EMPTY_STRING
+                    if (hasValue(this)) currencyCodeValue = getInt(this, Constants.DEFAULT_INT)
                     else throw Exception("attrCurrencyCode is required")
-                }
-                with(R.styleable.CurrencyField_attrSymbolPosition) {
-                    if (hasValue(this)) symbolPosition = SymbolPosition.getById(getInt(this, 0))
-                    else throw Exception("attrSymbolPosition is required")
-                }
-                with(R.styleable.CurrencyField_attrCharset) {
-                    if (hasValue(this)) charset = Charset.getById(getInt(this, 0))
-                    else throw Exception("attrCharset is required")
                 }
 
                 recycle()
@@ -116,7 +99,7 @@ class CurrencyField @JvmOverloads constructor(
         }
 
         text?.toString()?.let {
-            with(currencyFactory.parse(it, selectionStart)) {
+            with(currencyFactory.parseUserInput(it, selectionStart)) {
                 ignoreTextChange = true
                 setText(text)
                 setSelection(position)
@@ -126,7 +109,7 @@ class CurrencyField @JvmOverloads constructor(
     }
 
     private fun createInputRegex() = Regex(
-        when (charset) {
+        when (details.charset) {
             Charset.COMA_AND_DOT -> "[0-9\\.]"
             Charset.SPACE_AND_COMA -> "[0-9\\,]"
         }
@@ -135,4 +118,5 @@ class CurrencyField @JvmOverloads constructor(
     interface Listener {
         fun onChange(text: String, value: Double)
     }
+
 }

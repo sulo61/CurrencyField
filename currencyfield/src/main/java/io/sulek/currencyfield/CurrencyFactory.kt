@@ -8,6 +8,7 @@ import io.sulek.currencyfield.Constants.EMPTY_STRING
 import io.sulek.currencyfield.Constants.MAX_FRACTION_DIGITS
 import io.sulek.currencyfield.Constants.NO_FRACTION_DIGITS
 import io.sulek.currencyfield.data.Charset
+import io.sulek.currencyfield.data.Details
 import io.sulek.currencyfield.data.SymbolPosition
 import io.sulek.currencyfield.data.Result
 import java.math.RoundingMode
@@ -15,15 +16,10 @@ import java.text.NumberFormat
 import java.util.*
 import kotlin.math.min
 
-internal class CurrencyFactory(
-    private val currencySymbol: String,
-    private val currencyCode: String,
-    private val symbolPosition: SymbolPosition,
-    private val charset: Charset
-) {
+internal class CurrencyFactory(private val details: Details) {
 
     companion object {
-        private const val PRINT_DEBUG_LOGS = true
+        private const val PRINT_DEBUG_LOGS = false
         private const val TAG = "CurrencyFactory"
     }
 
@@ -32,19 +28,29 @@ internal class CurrencyFactory(
         maximumFractionDigits = NO_FRACTION_DIGITS
         roundingMode = RoundingMode.DOWN
     }
+
+    private val currencyCode
+        get() = details.currencyCode
+    private val symbolPosition
+        get() = details.symbolPosition
+    private val currencySymbol
+        get() = details.currencySymbol
+    private val charset
+        get() = details.charset
+
     private val thousandDividerRegex = Regex(
-        when (charset) {
+        when (details.charset) {
             Charset.COMA_AND_DOT -> "[,]"
             Charset.SPACE_AND_COMA -> "[\\s]"
         }
     )
-    private val decimalDivider = when (charset) {
+    private val decimalDivider = when (details.charset) {
         Charset.COMA_AND_DOT -> '.'
         Charset.SPACE_AND_COMA -> ','
     }
     private val currencySymbolInText = when (symbolPosition) {
-        SymbolPosition.BEGIN -> currencySymbol
-        SymbolPosition.END -> " $currencySymbol"
+        SymbolPosition.BEGIN -> details.currencySymbol
+        SymbolPosition.END -> " ${details.currencySymbol}"
     }
 
     private var lastText = EMPTY_STRING
@@ -58,21 +64,39 @@ internal class CurrencyFactory(
     private var currentSpecialCharsCounter = DEFAULT_INT
     private var nextSpecialCharsCounter = DEFAULT_INT
     private var currentFractionDigits = NO_FRACTION_DIGITS
+    private var addedFractionDigits = DEFAULT_INT
 
-    fun parse(currentText: String, currentSelection: Int, cleanHistory: Boolean = false): Result {
+    fun parseNumberInput(inputValue: Double, forceFractionDigits: Boolean): Result {
+        printStep("Parse number input")
+        setFormatterFractionDigits(inputValue.toString(), forceFractionDigits)
+        nextText = formatter.format(inputValue).removeEmptyFractionDigits()
+        nextSelection = nextText.length
+        updateLastValues()
+        return Result(nextText, nextSelection)
+    }
+
+    fun parseUserInput(currentText: String, currentSelection: Int, cleanHistory: Boolean = false): Result {
         if (cleanHistory) {
             lastSelection = DEFAULT_SELECTION
             lastText = EMPTY_STRING
             lastValue = DEFAULT_VALUE
         }
 
-        cleanedText = cleanTextFromExtraChars(currentText)
+        cleanedText = currentText.cleanTextFromExtraChars()
 
         // EMPTY TEXT
         if (cleanedText.isEmpty() || cleanedText == decimalDivider.toString()) {
             printStep("Empty string")
             nextText = EMPTY_STRING
             nextSelection = DEFAULT_SELECTION
+            updateLastValues()
+            return Result(nextText, nextSelection)
+        }
+
+        if (cleanedText.length > 15) {
+            printStep("Too long string")
+            nextText = lastText
+            nextSelection = lastSelection
             updateLastValues()
             return Result(nextText, nextSelection)
         }
@@ -125,7 +149,7 @@ internal class CurrencyFactory(
                 return Result(nextText, nextSelection)
             }
 
-            setFractionDigitsForFormatter(currentText)
+            setFormatterFractionDigits(currentText)
 
             nextText = formatter.format(currentValue)
             nextSelection = min(currentSelection, nextText.length)
@@ -138,8 +162,14 @@ internal class CurrencyFactory(
             }
 
             currentSpecialCharsCounter = countSpecialChars(symbolPosition, currentText, currentSelection)
-            nextSpecialCharsCounter = countSpecialChars(symbolPosition, nextText, currentSelection)
-            nextSelection = currentSelection - currentSpecialCharsCounter + nextSpecialCharsCounter
+            nextSpecialCharsCounter =
+                countSpecialChars(symbolPosition, nextText, min(nextText.length, currentSelection))
+            addedFractionDigits = currentText.countAddedFractionDigits()
+            nextSelection =
+                min(
+                    nextText.length,
+                    currentSelection - currentSpecialCharsCounter + nextSpecialCharsCounter + addedFractionDigits
+                )
             updateLastValues()
             return Result(nextText, nextSelection)
         }
@@ -155,7 +185,7 @@ internal class CurrencyFactory(
                 return Result(nextText, nextSelection)
             }
 
-            setFractionDigitsForFormatter(currentText)
+            setFormatterFractionDigits(currentText)
 
             nextText = formatter.format(currentValue)
             nextSelection = min(currentSelection, nextText.length)
@@ -165,6 +195,13 @@ internal class CurrencyFactory(
 
             if (currentValue == lastValue && currentSpecialCharsCounter != lastSpecialCharsCounter) {
                 printStep("Remove char - thousand separator, remove one more")
+                if (cleanedText.length <= 1) {
+                    printStep("Remove char - thousand separator, there is no more characters, return empty")
+                    nextText = EMPTY_STRING
+                    nextSelection = DEFAULT_SELECTION
+                    updateLastValues()
+                    return Result(nextText, nextSelection)
+                }
                 currentValue = cleanedText.substring(0, cleanedText.length - 1).currencyTextToDouble()
                 nextText = formatter.format(currentValue)
                 nextSelection = min(currentSelection, nextText.length)
@@ -181,21 +218,26 @@ internal class CurrencyFactory(
         return Result(currentText, currentSelection)
     }
 
-    private fun cleanTextFromExtraChars(currentText: String): String {
-        return currentText
-            .replace(thousandDividerRegex, EMPTY_STRING)
-            .replace(currencySymbolInText, EMPTY_STRING)
-            .replace(currencySymbol, EMPTY_STRING)
-    }
-
-    fun getLastText() = lastText
-
     fun getLastValue() = lastValue
+
+    private fun String.cleanTextFromExtraChars() = this
+        .replace(thousandDividerRegex, EMPTY_STRING)
+        .replace(currencySymbolInText, EMPTY_STRING)
+        .replace(currencySymbol, EMPTY_STRING)
+
+    private fun String.countAddedFractionDigits(): Int {
+        if (contains(".")) {
+            val position = indexOf(".") + 1
+            val currentFractionDigits = length - position
+            return formatter.maximumFractionDigits - currentFractionDigits
+        }
+        return formatter.maximumFractionDigits
+    }
 
     private fun updateLastValues() {
         lastText = nextText
         lastSelection = nextSelection
-        lastValue = if (nextText.isEmpty()) DEFAULT_VALUE else cleanTextFromExtraChars(nextText).currencyTextToDouble()
+        lastValue = if (nextText.isEmpty()) DEFAULT_VALUE else nextText.cleanTextFromExtraChars().currencyTextToDouble()
     }
 
     private fun countSpecialChars(symbolPosition: SymbolPosition, input: String, limit: Int): Int {
@@ -208,13 +250,17 @@ internal class CurrencyFactory(
         return counter
     }
 
-    private fun String.currencyTextToDouble() = replace(",", ".").toDouble()
+    private fun String.currencyTextToDouble() = replaceComaToDot().toDouble()
 
-    private fun setFractionDigitsForFormatter(currentText: String) {
-        currentFractionDigits =
-            if (currentText.contains(decimalDivider)) {
-                currentText.length - currentText.indexOf(decimalDivider) - 1 - if (symbolPosition == SymbolPosition.END) currencySymbolInText.length else 0
-            } else NO_FRACTION_DIGITS
+    private fun String.replaceComaToDot() = replace(",", ".")
+
+    private fun setFormatterFractionDigits(currentText: String, forceMax: Boolean = false) {
+        currentFractionDigits = when {
+            forceMax -> MAX_FRACTION_DIGITS
+            currentText.contains(decimalDivider) -> currentText.length - currentText.indexOf(decimalDivider) - 1 -
+                    if (symbolPosition == SymbolPosition.END) currencySymbolInText.length else 0
+            else -> NO_FRACTION_DIGITS
+        }
         formatter.maximumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
         formatter.minimumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
     }
@@ -222,6 +268,12 @@ internal class CurrencyFactory(
     private fun getLocale() = when (charset) {
         Charset.COMA_AND_DOT -> Locale.US
         Charset.SPACE_AND_COMA -> Locale.CANADA_FRENCH
+    }
+
+    private fun String.removeEmptyFractionDigits() = when {
+        endsWith(".00") -> replace(".00", "")
+        endsWith(".0") -> replace(".0", "")
+        else -> this
     }
 
     // ONLY FOR DEBUG

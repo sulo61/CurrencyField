@@ -4,35 +4,52 @@ Current support:
 - USD
 - EUR
 
-Next version:
-- tests
-- full customization
-
 ## 0. Preview
-![Imgur](https://i.imgur.com/zKtBOIi.gif)
+![Imgur](https://i.imgur.com/dU5Cxpj.gif)
+![Imgur](https://i.imgur.com/fwUMEhN.gif)
 
 ## 1. Dependency
 ```
-implementation 'io.sulek:currencyfield:1.0.3'
+implementation 'io.sulek:currencyfield:1.0.6'
 ```
 ```
 repositories {
     maven {
-        url  "https://dl.bintray.com/sulo61/Android"
+        url  "https://jcenter.bintray.com"
     }
 }
 ```
 
 ## 2. Usage
-#XML
+### XML
 ```
 <io.sulek.currencyfield.CurrencyField
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:currency="USD" />
+    app:attrCurrencyCode="USD" />
+```
+### attrCurrencyCode
+- USD
+- EUR
+
+## 3. Usage - Code
+
+### getValue()
+### setBigDecimalValue()
+### setDoubleValue()
+### setListener()
+
+```
+field.getValue()
+field.setDoubleValue(2.0)
+field.setListener(object: CurrencyField.Listener {
+    override fun onChange(text: String, value: Double) {
+
+    }
+})
 ```
 
-## 3. Licence
+## 4. Licence
 
 ```
 Copyright 2019 Michał Sułek
