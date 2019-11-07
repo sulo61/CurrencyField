@@ -16,7 +16,7 @@ import java.text.NumberFormat
 import java.util.*
 import kotlin.math.min
 
-internal class CurrencyFactory(private val currencyCode: String, private val details: Details) {
+internal class CurrencyFactory(private val details: Details) {
 
     companion object {
         private const val PRINT_DEBUG_LOGS = false
@@ -29,6 +29,8 @@ internal class CurrencyFactory(private val currencyCode: String, private val det
         roundingMode = RoundingMode.DOWN
     }
 
+    private val currencyCode
+        get() = details.currencyCode
     private val symbolPosition
         get() = details.symbolPosition
     private val currencySymbol

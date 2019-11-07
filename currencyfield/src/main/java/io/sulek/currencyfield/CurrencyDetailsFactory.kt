@@ -7,9 +7,9 @@ import java.lang.IllegalArgumentException
 
 object CurrencyDetailsFactory {
 
-    fun getDetails(code: String) = when (code) {
-        "USD" -> Details("$", SymbolPosition.BEGIN, Charset.COMA_AND_DOT)
-        "EUR" -> Details("€", SymbolPosition.END, Charset.SPACE_AND_COMA)
+    fun getDetails(codeValue: Int) = when (codeValue) {
+        0 -> Details("USD", "$", SymbolPosition.BEGIN, Charset.COMA_AND_DOT)
+        1 -> Details("EUR", "€", SymbolPosition.END, Charset.SPACE_AND_COMA)
         else -> throw IllegalArgumentException("unsupported code")
     }
 

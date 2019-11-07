@@ -15,7 +15,7 @@ class CurrencyField @JvmOverloads constructor(
     defStyleAttr: Int = android.R.attr.editTextStyle
 ) : AppCompatEditText(context, attrs, defStyleAttr) {
 
-    private var currencyCode: String = Constants.EMPTY_STRING
+    private var currencyCodeValue: Int = 0
     private val details: Details
     private var currencyFactory: CurrencyFactory
     private var ignoreTextChange = false
@@ -27,12 +27,12 @@ class CurrencyField @JvmOverloads constructor(
 
     init {
         getAttributes(attrs, context)
-        details = CurrencyDetailsFactory.getDetails(currencyCode)
+        details = CurrencyDetailsFactory.getDetails(currencyCodeValue)
         inputRegex = createInputRegex()
         inputFilters = arrayOf(createInputFilter())
         textWatcher = createTextWatcher()
 
-        currencyFactory = CurrencyFactory(currencyCode, details)
+        currencyFactory = CurrencyFactory(details)
 
         addTextChangedListener(textWatcher)
         keyListener = DigitsKeyListener.getInstance("0123456789.,")
@@ -73,7 +73,7 @@ class CurrencyField @JvmOverloads constructor(
         attrs?.let {
             with(context.obtainStyledAttributes(attrs, R.styleable.CurrencyField)) {
                 with(R.styleable.CurrencyField_attrCurrencyCode) {
-                    if (hasValue(this)) currencyCode = getString(this) ?: Constants.EMPTY_STRING
+                    if (hasValue(this)) currencyCodeValue = getInt(this, Constants.DEFAULT_INT)
                     else throw Exception("attrCurrencyCode is required")
                 }
 
