@@ -16,13 +16,10 @@ import java.text.NumberFormat
 import java.util.*
 import kotlin.math.min
 
-internal class CurrencyFactory(
-    private val currencyCode: String,
-    private val details: Details
-) {
+internal class CurrencyFactory(private val currencyCode: String, private val details: Details) {
 
     companion object {
-        private const val PRINT_DEBUG_LOGS = true
+        private const val PRINT_DEBUG_LOGS = false
         private const val TAG = "CurrencyFactory"
     }
 
@@ -39,7 +36,6 @@ internal class CurrencyFactory(
     private val charset
         get() = details.charset
 
-
     private val thousandDividerRegex = Regex(
         when (details.charset) {
             Charset.COMA_AND_DOT -> "[,]"
@@ -55,7 +51,6 @@ internal class CurrencyFactory(
         SymbolPosition.END -> " ${details.currencySymbol}"
     }
 
-    private val emptyFractionRegex = Regex("\\.0+$")
     private var lastText = EMPTY_STRING
     private var cleanedText = EMPTY_STRING
     private var nextText = EMPTY_STRING
@@ -69,20 +64,23 @@ internal class CurrencyFactory(
     private var currentFractionDigits = NO_FRACTION_DIGITS
     private var addedFractionDigits = DEFAULT_INT
 
-    fun parse(
-        currentText: String,
-        currentSelection: Int,
-        cleanHistory: Boolean = false,
-        forceFractionDigits: Boolean = false
-    ): Result {
+    fun parseNumberInput(inputValue: Double, forceFractionDigits: Boolean): Result {
+        printStep("Parse number input")
+        setFormatterFractionDigits(inputValue.toString(), forceFractionDigits)
+        nextText = formatter.format(inputValue).removeEmptyFractionDigits()
+        nextSelection = nextText.length
+        updateLastValues()
+        return Result(nextText, nextSelection)
+    }
+
+    fun parseUserInput(currentText: String, currentSelection: Int, cleanHistory: Boolean = false): Result {
         if (cleanHistory) {
             lastSelection = DEFAULT_SELECTION
             lastText = EMPTY_STRING
             lastValue = DEFAULT_VALUE
         }
 
-        cleanedText = currentText.cleanTextFromExtraChars()//.removeAdditionalFractionDigits()
-
+        cleanedText = currentText.cleanTextFromExtraChars()
 
         // EMPTY TEXT
         if (cleanedText.isEmpty() || cleanedText == decimalDivider.toString()) {
@@ -149,7 +147,7 @@ internal class CurrencyFactory(
                 return Result(nextText, nextSelection)
             }
 
-            setFractionDigitsForFormatter(currentText, forceFractionDigits)
+            setFormatterFractionDigits(currentText)
 
             nextText = formatter.format(currentValue)
             nextSelection = min(currentSelection, nextText.length)
@@ -185,7 +183,7 @@ internal class CurrencyFactory(
                 return Result(nextText, nextSelection)
             }
 
-            setFractionDigitsForFormatter(currentText, forceFractionDigits)
+            setFormatterFractionDigits(currentText)
 
             nextText = formatter.format(currentValue)
             nextSelection = min(currentSelection, nextText.length)
@@ -225,15 +223,6 @@ internal class CurrencyFactory(
         .replace(currencySymbolInText, EMPTY_STRING)
         .replace(currencySymbol, EMPTY_STRING)
 
-    private fun String.removeAdditionalFractionDigits(): String {
-        if (contains(".")) {
-            val position = indexOf(".")
-            if (emptyFractionRegex.containsMatchIn(this)) return substring(0, position)
-            if (length - position > MAX_FRACTION_DIGITS) return substring(0, position + 1 + MAX_FRACTION_DIGITS)
-        }
-        return this
-    }
-
     private fun String.countAddedFractionDigits(): Int {
         if (contains(".")) {
             val position = indexOf(".") + 1
@@ -263,15 +252,13 @@ internal class CurrencyFactory(
 
     private fun String.replaceComaToDot() = replace(",", ".")
 
-    private fun setFractionDigitsForFormatter(currentText: String, forceFractionDigits: Boolean = false) {
-        currentFractionDigits =
-            when {
-                forceFractionDigits -> MAX_FRACTION_DIGITS
-//                emptyFractionRegex.containsMatchIn(currentText) -> NO_FRACTION_DIGITS
-                currentText.contains(decimalDivider) -> currentText.length - currentText.indexOf(decimalDivider) - 1 -
-                        if (symbolPosition == SymbolPosition.END) currencySymbolInText.length else 0
-                else -> NO_FRACTION_DIGITS
-            }
+    private fun setFormatterFractionDigits(currentText: String, forceMax: Boolean = false) {
+        currentFractionDigits = when {
+            forceMax -> MAX_FRACTION_DIGITS
+            currentText.contains(decimalDivider) -> currentText.length - currentText.indexOf(decimalDivider) - 1 -
+                    if (symbolPosition == SymbolPosition.END) currencySymbolInText.length else 0
+            else -> NO_FRACTION_DIGITS
+        }
         formatter.maximumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
         formatter.minimumFractionDigits = min(currentFractionDigits, MAX_FRACTION_DIGITS)
     }
@@ -279,6 +266,12 @@ internal class CurrencyFactory(
     private fun getLocale() = when (charset) {
         Charset.COMA_AND_DOT -> Locale.US
         Charset.SPACE_AND_COMA -> Locale.CANADA_FRENCH
+    }
+
+    private fun String.removeEmptyFractionDigits() = when {
+        endsWith(".00") -> replace(".00", "")
+        endsWith(".0") -> replace(".0", "")
+        else -> this
     }
 
     // ONLY FOR DEBUG

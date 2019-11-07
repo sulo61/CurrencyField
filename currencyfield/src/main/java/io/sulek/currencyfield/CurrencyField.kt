@@ -41,31 +41,25 @@ class CurrencyField @JvmOverloads constructor(
 
     fun getValue() = currencyFactory.getLastValue()
 
-    fun setDoubleValue(value: Double?, notifyOnTextChange: Boolean = false, forceFractionDigits: Boolean = false) {
-        if (value != null) setTextValue(value.toString(), notifyOnTextChange, forceFractionDigits)
-        else setEmptyValue(notifyOnTextChange)
+
+    fun setBigDecimalValue(value: BigDecimal?, notifyListener: Boolean = false, forceFractionDigits: Boolean = false) {
+        value?.let { setDoubleValue(it.toDouble(), notifyListener, forceFractionDigits) }
+            ?: run { setEmptyValue(notifyListener) }
     }
 
-    fun setBigDecimalValue(
-        value: BigDecimal?,
-        notifyOnTextChange: Boolean = false,
-        forceFractionDigits: Boolean = false
-    ) {
-        if (value != null) setTextValue(value.toString(), notifyOnTextChange, forceFractionDigits)
-        else setEmptyValue(notifyOnTextChange)
+    fun setDoubleValue(value: Double?, notifyListener: Boolean = false, forceFractionDigits: Boolean = false) {
+        value?.let {
+            val parseResult = currencyFactory.parseNumberInput(value, forceFractionDigits)
+
+            this.ignoreTextChange = true
+            setText(parseResult.text)
+            setSelection(parseResult.position)
+            if (notifyListener) listener?.onChange(parseResult.text, currencyFactory.getLastValue())
+        } ?: run { setEmptyValue(notifyListener) }
     }
 
     fun setListener(listener: Listener) {
         this.listener = listener
-    }
-
-    private fun setTextValue(textValue: String, notifyOnTextChange: Boolean, forceFractionDigits: Boolean) {
-        val parseResult = currencyFactory.parse(textValue, textValue.length, true, forceFractionDigits)
-
-        this.ignoreTextChange = true
-        setText(parseResult.text)
-        setSelection(parseResult.position)
-        if (notifyOnTextChange) listener?.onChange(parseResult.text, currencyFactory.getLastValue())
     }
 
     private fun setEmptyValue(notifyOnTextChange: Boolean) {
@@ -105,7 +99,7 @@ class CurrencyField @JvmOverloads constructor(
         }
 
         text?.toString()?.let {
-            with(currencyFactory.parse(it, selectionStart)) {
+            with(currencyFactory.parseUserInput(it, selectionStart)) {
                 ignoreTextChange = true
                 setText(text)
                 setSelection(position)
@@ -124,4 +118,5 @@ class CurrencyField @JvmOverloads constructor(
     interface Listener {
         fun onChange(text: String, value: Double)
     }
+
 }
