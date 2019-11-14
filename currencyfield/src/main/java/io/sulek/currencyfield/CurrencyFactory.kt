@@ -69,7 +69,8 @@ internal class CurrencyFactory(private val details: Details) {
     fun parseNumberInput(inputValue: Double, forceFractionDigits: Boolean): Result {
         printStep("Parse number input")
         setFormatterFractionDigits(inputValue.toString(), forceFractionDigits)
-        nextText = formatter.format(inputValue).removeEmptyFractionDigits()
+        nextText = formatter.format(inputValue)
+        if (!forceFractionDigits) nextText = nextText.removeEmptyFractionDigits()
         nextSelection = nextText.length
         updateLastValues()
         return Result(nextText, nextSelection)

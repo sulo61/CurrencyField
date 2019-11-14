@@ -1,3 +1,6 @@
+[ ![Download](https://api.bintray.com/packages/sulo61/Android/currencyfield/images/download.svg) ](https://bintray.com/sulo61/Android/currencyfield/_latestVersion)
+[![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-CurrencyField-green.svg?style=flat)](https://android-arsenal.com/details/1/7853)
+
 # CurrencyField
 AppCompatEditText with auto formatting currencies. 
 Current support:
@@ -10,7 +13,7 @@ Current support:
 
 ## 1. Dependency
 ```
-implementation 'io.sulek:currencyfield:1.0.6'
+implementation 'io.sulek:currencyfield:1.0.7'
 ```
 ```
 repositories {
