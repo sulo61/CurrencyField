@@ -78,6 +78,10 @@ class CurrencyField @JvmOverloads constructor(
         this.listener = listener
     }
 
+    fun removeListener() {
+        this.listener = null
+    }
+
     private fun setEmptyValue(notifyOnTextChange: Boolean) {
         this.ignoreTextChange = true
         setText(Constants.EMPTY_STRING)

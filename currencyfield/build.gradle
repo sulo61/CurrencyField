@@ -7,7 +7,7 @@ publish {
 
     def groupProjectID = 'io.sulek'
     def artifactProjectID = 'currencyfield'
-    def publishVersionID = '1.0.8'
+    def publishVersionID = '1.0.9'
 
     userOrg = 'sulo61'
     repoName = 'Android'
@@ -25,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 28
-        versionCode 8
-        versionName "1.0.8"
+        versionCode 9
+        versionName "1.0.9"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
