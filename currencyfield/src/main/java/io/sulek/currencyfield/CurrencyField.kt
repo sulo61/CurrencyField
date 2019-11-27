@@ -34,9 +34,19 @@ class CurrencyField @JvmOverloads constructor(
 
         currencyFactory = CurrencyFactory(details)
 
-        addTextChangedListener(textWatcher)
+
         keyListener = DigitsKeyListener.getInstance("0123456789.,")
         filters = inputFilters
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        addTextChangedListener(textWatcher)
+    }
+
+    override fun onDetachedFromWindow() {
+        removeTextChangedListener(textWatcher)
+        super.onDetachedFromWindow()
     }
 
     fun getValue() = currencyFactory.getLastValue()
@@ -56,6 +66,12 @@ class CurrencyField @JvmOverloads constructor(
             setSelection(parseResult.position)
             if (notifyListener) listener?.onChange(parseResult.text, currencyFactory.getLastValue())
         } ?: run { setEmptyValue(notifyListener) }
+    }
+
+    fun clearField(notifyListener: Boolean = false) {
+        setText(Constants.EMPTY_STRING)
+        setSelection(0)
+        if (notifyListener) listener?.onChange(BigDecimal.ZERO.toString(), currencyFactory.getLastValue())
     }
 
     fun setListener(listener: Listener) {

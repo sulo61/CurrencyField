@@ -13,7 +13,7 @@ Current support:
 
 ## 1. Dependency
 ```
-implementation 'io.sulek:currencyfield:1.0.7'
+implementation 'io.sulek:currencyfield:1.0.8'
 ```
 ```
 repositories {
@@ -41,6 +41,7 @@ repositories {
 ### setBigDecimalValue()
 ### setDoubleValue()
 ### setListener()
+### clearField()
 
 ```
 field.getValue()
