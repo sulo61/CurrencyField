@@ -68,11 +68,7 @@ class CurrencyField @JvmOverloads constructor(
         } ?: run { setEmptyValue(notifyListener) }
     }
 
-    fun clearField(notifyListener: Boolean = false) {
-        setText(Constants.EMPTY_STRING)
-        setSelection(0)
-        if (notifyListener) listener?.onChange(BigDecimal.ZERO.toString(), currencyFactory.getLastValue())
-    }
+    fun clearField(notifyListener: Boolean = false) = setEmptyValue(notifyListener)
 
     fun setListener(listener: Listener) {
         this.listener = listener
