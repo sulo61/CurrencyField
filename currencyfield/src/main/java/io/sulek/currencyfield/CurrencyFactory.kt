@@ -251,7 +251,11 @@ internal class CurrencyFactory(private val details: Details) {
         return counter
     }
 
-    private fun String.currencyTextToDouble() = replaceComaToDot().toDouble()
+    private fun String.currencyTextToDouble() = runCatching {
+        replaceComaToDot().toDouble()
+    }.onFailure {
+        Log.e("CurrencyFactory", "String.currencyTextToDouble", it)
+    }.getOrDefault(DEFAULT_VALUE)
 
     private fun String.replaceComaToDot() = replace(",", ".")
 
