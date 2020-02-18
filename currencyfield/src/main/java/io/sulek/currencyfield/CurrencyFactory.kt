@@ -104,15 +104,6 @@ internal class CurrencyFactory(private val details: Details) {
 
         currentValue = cleanedText.currencyTextToDouble()
 
-        // EMPTY VALUE
-        if (currentValue == DEFAULT_VALUE) {
-            printStep("Empty value")
-            nextText = EMPTY_STRING
-            nextSelection = DEFAULT_SELECTION
-            updateLastValues()
-            return Result(nextText, nextSelection)
-        }
-
         // INCORRECT FORMAT - MISSING SYMBOL
         if (lastText.contains(currencySymbolInText) && !currentText.contains(currencySymbolInText)) {
             printStep("Incorrect format - missing symbol")

@@ -13,7 +13,7 @@ Current support:
 
 ## 1. Dependency
 ```
-implementation 'io.sulek:currencyfield:1.0.11'
+implementation 'io.sulek:currencyfield:1.0.12'
 ```
 ```
 repositories {
